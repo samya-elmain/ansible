@@ -1,0 +1,38 @@
+---
+- name: Install Jenkins and OpenJDK 11
+  hosts: localhost
+  become: true
+  tasks:
+    - name: Update package lists
+      apt:
+        update_cache: yes
+
+    - name: Install OpenJDK 11 JDK
+      apt:
+        name: openjdk-11-jdk
+        state: present
+
+    - name: Import Jenkins repository key
+      shell: |
+        curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo gpg --dearmor -o /usr/share/keyrings/jenkins-archive-keyring.gpg
+      register: import_key_output
+      changed_when: import_key_output.stdout != ''
+    
+    - name: Add Jenkins repository to sources.list.d
+      shell: |
+        echo "deb [signed-by=/usr/share/keyrings/jenkins-archive-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+      when: import_key_output.changed
+    
+    - name: Update package lists
+      apt:
+        update_cache: yes
+    
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Start Jenkins service
+      systemd:
+        name: jenkins
+        state: started
